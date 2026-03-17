@@ -4,7 +4,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl git \
   && rm -rf /var/lib/apt/lists/*
 
-# Install paperclip from npm (pre-built, no source build needed)
+# Install paperclip CLI from npm (pre-built)
 RUN npm install -g paperclipai@0.3.1
 
 # Create data directory
@@ -17,11 +17,10 @@ ENV NODE_ENV=production \
   SERVE_UI=true \
   PAPERCLIP_HOME=/paperclip \
   PAPERCLIP_INSTANCE_ID=default \
-  PAPERCLIP_CONFIG=/paperclip/instances/default/config.json \
-  PAPERCLIP_DEPLOYMENT_MODE=authenticated \
+  PAPERCLIP_DEPLOYMENT_MODE=local_trusted \
   PAPERCLIP_DEPLOYMENT_EXPOSURE=private
 
 EXPOSE 3100
 
 USER node
-CMD ["paperclipai", "serve", "--host", "0.0.0.0", "--port", "3100"]
+CMD ["paperclipai", "run", "--yes"]
