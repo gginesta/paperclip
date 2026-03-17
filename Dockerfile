@@ -15,4 +15,5 @@ ENV NODE_ENV=production \
 
 EXPOSE 3100
 
-CMD ["node", "-e", "import('@paperclipai/server').then(m => m.startServer())"]
+WORKDIR /usr/local/lib/node_modules/paperclipai
+CMD ["node", "-e", "import('./node_modules/@paperclipai/server/dist/index.js').then(m => m.startServer())"]
