@@ -6,15 +6,26 @@ RUN apt-get update \
 
 RUN npm install -g paperclipai@0.3.1
 
-RUN mkdir -p /paperclip/instances/default/data/storage \
-  && mkdir -p /paperclip/instances/default/data/backups \
-  && mkdir -p /paperclip/instances/default/logs \
-  && mkdir -p /paperclip/instances/default/secrets \
-  && mkdir -p /paperclip/instances/default/db
+COPY <<-"EOF" /tmp/paperclip-config.json
+{"$meta": {"version": 1, "updatedAt": "2026-03-17T13:00:00.000Z", "source": "onboard"}, "database": {"mode": "postgres", "backup": {"enabled": false, "intervalMinutes": 60, "retentionDays": 30, "dir": "/paperclip/instances/default/data/backups"}}, "logging": {"mode": "file", "logDir": "/paperclip/instances/default/logs"}, "server": {"deploymentMode": "authenticated", "exposure": "public", "host": "0.0.0.0", "port": 3100, "allowedHostnames": [], "serveUi": true}, "auth": {"baseUrlMode": "explicit", "publicBaseUrl": "https://paperclip-production-83f5.up.railway.app", "disableSignUp": false}, "storage": {"provider": "local_disk", "localDisk": {"baseDir": "/paperclip/instances/default/data/storage"}, "s3": {"bucket": "paperclip", "region": "us-east-1", "prefix": "", "forcePathStyle": false}}, "secrets": {"provider": "local_encrypted", "strictMode": false, "localEncrypted": {"keyFilePath": "/paperclip/instances/default/secrets/master.key"}}}
+EOF
 
-RUN echo '{"$meta": {"version": 1, "updatedAt": "2026-03-17T13:00:00.000Z", "source": "onboard"}, "database": {"mode": "postgres", "backup": {"enabled": false, "intervalMinutes": 60, "retentionDays": 30, "dir": "/paperclip/instances/default/data/backups"}}, "logging": {"mode": "file", "logDir": "/paperclip/instances/default/logs"}, "server": {"deploymentMode": "authenticated", "exposure": "public", "host": "0.0.0.0", "port": 3100, "allowedHostnames": [], "serveUi": true}, "auth": {"baseUrlMode": "explicit", "publicBaseUrl": "https://paperclip-production-83f5.up.railway.app", "disableSignUp": false}, "storage": {"provider": "local_disk", "localDisk": {"baseDir": "/paperclip/instances/default/data/storage"}, "s3": {"bucket": "paperclip", "region": "us-east-1", "prefix": "", "forcePathStyle": false}}, "secrets": {"provider": "local_encrypted", "strictMode": false, "localEncrypted": {"keyFilePath": "/paperclip/instances/default/secrets/master.key"}}}' > /paperclip/instances/default/config.json
+COPY <<-"ENTRY" /entrypoint.sh
+#!/bin/sh
+set -e
+mkdir -p /paperclip/instances/default/data/storage
+mkdir -p /paperclip/instances/default/data/backups
+mkdir -p /paperclip/instances/default/logs
+mkdir -p /paperclip/instances/default/secrets
+mkdir -p /paperclip/instances/default/db
+if [ ! -f /paperclip/instances/default/config.json ]; then
+  cp /tmp/paperclip-config.json /paperclip/instances/default/config.json
+  echo "Config copied to volume"
+fi
+exec paperclipai run
+ENTRY
 
-RUN chown -R node:node /paperclip
+RUN chmod +x /entrypoint.sh
 
 ENV NODE_ENV=production \
   HOME=/paperclip \
@@ -28,5 +39,4 @@ ENV NODE_ENV=production \
 
 EXPOSE 3100
 
-USER node
-CMD ["paperclipai", "run"]
+CMD ["/entrypoint.sh"]
