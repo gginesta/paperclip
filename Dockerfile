@@ -7,8 +7,69 @@ RUN apt-get update \
 # Install paperclip CLI from npm (pre-built)
 RUN npm install -g paperclipai@0.3.1
 
-# Create data directory
-RUN mkdir -p /paperclip && chown node:node /paperclip
+# Create data directory structure
+RUN mkdir -p /paperclip/instances/default/data/storage \
+  && mkdir -p /paperclip/instances/default/data/backups \
+  && mkdir -p /paperclip/instances/default/logs \
+  && mkdir -p /paperclip/instances/default/secrets \
+  && mkdir -p /paperclip/instances/default/db
+
+# Pre-bake config (non-interactive — Railway has no TTY)
+RUN echo '{
+  "$meta": {
+    "version": 1,
+    "updatedAt": "2026-03-17T13:00:00.000Z",
+    "source": "onboard"
+  },
+  "database": {
+    "mode": "postgres",
+    "backup": {
+      "enabled": false,
+      "intervalMinutes": 60,
+      "retentionDays": 30,
+      "dir": "/paperclip/instances/default/data/backups"
+    }
+  },
+  "logging": {
+    "mode": "file",
+    "logDir": "/paperclip/instances/default/logs"
+  },
+  "server": {
+    "deploymentMode": "authenticated",
+    "exposure": "public",
+    "host": "0.0.0.0",
+    "port": 3100,
+    "allowedHostnames": [],
+    "serveUi": true
+  },
+  "auth": {
+    "baseUrlMode": "explicit",
+    "publicBaseUrl": "https://paperclip-production-83f5.up.railway.app",
+    "disableSignUp": false
+  },
+  "storage": {
+    "provider": "local_disk",
+    "localDisk": {
+      "baseDir": "/paperclip/instances/default/data/storage"
+    },
+    "s3": {
+      "bucket": "paperclip",
+      "region": "us-east-1",
+      "prefix": "",
+      "forcePathStyle": false
+    }
+  },
+  "secrets": {
+    "provider": "local_encrypted",
+    "strictMode": false,
+    "localEncrypted": {
+      "keyFilePath": "/paperclip/instances/default/secrets/master.key"
+    }
+  }
+}' > /paperclip/instances/default/config.json
+
+# Fix ownership
+RUN chown -R node:node /paperclip
 
 ENV NODE_ENV=production \
   HOME=/paperclip \
@@ -17,10 +78,10 @@ ENV NODE_ENV=production \
   SERVE_UI=true \
   PAPERCLIP_HOME=/paperclip \
   PAPERCLIP_INSTANCE_ID=default \
-  PAPERCLIP_DEPLOYMENT_MODE=local_trusted \
-  PAPERCLIP_DEPLOYMENT_EXPOSURE=private
+  PAPERCLIP_DEPLOYMENT_MODE=authenticated \
+  BETTER_AUTH_URL=https://paperclip-production-83f5.up.railway.app
 
 EXPOSE 3100
 
 USER node
-CMD ["paperclipai", "run", "--yes"]
+CMD ["paperclipai", "run"]
