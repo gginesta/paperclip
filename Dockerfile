@@ -6,8 +6,6 @@ RUN apt-get update \
 
 RUN npm install -g paperclipai@0.3.1
 
-COPY entrypoint.mjs /app/entrypoint.mjs
-
 ENV NODE_ENV=production \
   HOST=0.0.0.0 \
   PORT=3100 \
@@ -18,4 +16,5 @@ ENV NODE_ENV=production \
 EXPOSE 3100
 
 WORKDIR /usr/local/lib/node_modules/paperclipai
-CMD ["node", "/app/entrypoint.mjs"]
+COPY entrypoint.mjs ./entrypoint.mjs
+CMD ["node", "entrypoint.mjs"]
