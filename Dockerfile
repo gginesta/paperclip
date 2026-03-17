@@ -16,4 +16,22 @@ ENV NODE_ENV=production \
 EXPOSE 3100
 
 WORKDIR /usr/local/lib/node_modules/paperclipai
-CMD ["node", "-e", "import('./node_modules/@paperclipai/server/dist/index.js').then(m => m.startServer())"]
+
+# Entrypoint: promote user to admin if needed, then start server
+CMD ["node", "-e", "\
+const { startServer } = await import('./node_modules/@paperclipai/server/dist/index.js');\
+const srv = await startServer();\
+// After server starts, promote user via DB\
+try {\
+  const pg = await import('./node_modules/postgres/src/index.js');\
+  const sql = pg.default(process.env.DATABASE_URL);\
+  const users = await sql\`SELECT id, email FROM \\\"user\\\" WHERE email = 'guillermo.ginesta@gmail.com'\`;\
+  if (users.length > 0) {\
+    const uid = users[0].id;\
+    await sql\`DELETE FROM instance_user_roles WHERE user_id = 'local-board'\`;\
+    await sql\`INSERT INTO instance_user_roles (user_id, role) VALUES (\${uid}, 'instance_admin') ON CONFLICT DO NOTHING\`;\
+    console.log('Promoted ' + uid + ' to instance_admin');\
+  }\
+  await sql.end();\
+} catch(e) { console.log('Admin promotion note:', e.message); }\
+"]
