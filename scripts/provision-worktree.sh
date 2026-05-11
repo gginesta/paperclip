@@ -172,16 +172,32 @@ async function findAvailablePort(preferredPort, reserved = new Set()) {
   });
 }
 
-function isLoopbackHost(hostname) {
-  const value = hostname.trim().toLowerCase();
-  return value === "127.0.0.1" || value === "localhost" || value === "::1";
+function isLocalOrTailnetHost(hostname) {
+  const host = String(hostname || "").toLowerCase();
+  if (!host) return false;
+  if (host === "localhost" || host === "0.0.0.0" || host === "::" || host === "::1") return true;
+  if (host.startsWith("127.") || host.startsWith("10.") || host.startsWith("192.168.")) return true;
+
+  const match = host.match(/^172\.(\d{1,2})\./);
+  if (match) {
+    const secondOctet = Number(match[1]);
+    if (secondOctet >= 16 && secondOctet <= 31) return true;
+  }
+
+  return (
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".ts.net") ||
+    !host.includes(".")
+  );
 }
 
 function rewriteLocalUrlPort(rawUrl, port) {
   if (!rawUrl) return undefined;
   try {
     const parsed = new URL(rawUrl);
-    if (!isLoopbackHost(parsed.hostname)) return rawUrl;
+    if (!parsed.port) return rawUrl;
+    if (!isLocalOrTailnetHost(parsed.hostname)) return rawUrl;
     parsed.port = String(port);
     return parsed.toString();
   } catch {

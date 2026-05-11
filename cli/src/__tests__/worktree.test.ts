@@ -190,10 +190,12 @@ describe("worktree helpers", () => {
     ).toEqual(["worktree", "add", "-b", "my-worktree", "/tmp/my-worktree", "origin/main"]);
   });
 
-  it("rewrites auth URLs only when they already include a port", () => {
+  it("rewrites auth URL ports only for local or tailnet hosts", () => {
     expect(rewriteLocalUrlPort("http://127.0.0.1:3100", 3110)).toBe("http://127.0.0.1:3110/");
     expect(rewriteLocalUrlPort("http://my-host.ts.net:3100", 3110)).toBe("http://my-host.ts.net:3110/");
+    expect(rewriteLocalUrlPort("http://paperclip-dev:3100", 3110)).toBe("http://paperclip-dev:3110/");
     expect(rewriteLocalUrlPort("https://paperclip.example", 3110)).toBe("https://paperclip.example");
+    expect(rewriteLocalUrlPort("https://paperclip.example:8443", 3110)).toBe("https://paperclip.example:8443");
   });
 
   it("builds isolated config and env paths for a worktree", () => {

@@ -521,6 +521,88 @@ describe("worktree config repair", () => {
     expect(writtenConfig.auth.publicBaseUrl).toBe("http://my-host.ts.net:3103/");
   });
 
+  it("does not rewrite explicit-port public auth URLs when persisting runtime-selected ports", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-worktree-public-explicit-ports-"));
+    const worktreeRoot = path.join(tempRoot, "PAP-126-public-base-url-port");
+    const paperclipDir = path.join(worktreeRoot, ".paperclip");
+    const configPath = path.join(paperclipDir, "config.json");
+    const isolatedHome = path.join(tempRoot, ".paperclip-worktrees");
+    const instanceRoot = path.join(isolatedHome, "instances", "pap-126-public-base-url-port");
+
+    await fs.mkdir(paperclipDir, { recursive: true });
+    await fs.writeFile(
+      configPath,
+      JSON.stringify(
+        {
+          ...buildLegacyConfig(instanceRoot, "https://paperclip.example:8443"),
+          database: {
+            mode: "embedded-postgres",
+            embeddedPostgresDataDir: path.join(instanceRoot, "db"),
+            embeddedPostgresPort: 54331,
+            backup: {
+              enabled: true,
+              intervalMinutes: 60,
+              retentionDays: 30,
+              dir: path.join(instanceRoot, "data", "backups"),
+            },
+          },
+          logging: {
+            mode: "file",
+            logDir: path.join(instanceRoot, "logs"),
+          },
+          server: {
+            deploymentMode: "local_trusted",
+            exposure: "private",
+            host: "127.0.0.1",
+            port: 3101,
+            allowedHostnames: [],
+            serveUi: true,
+          },
+          storage: {
+            provider: "local_disk",
+            localDisk: {
+              baseDir: path.join(instanceRoot, "data", "storage"),
+            },
+            s3: {
+              bucket: "paperclip",
+              region: "us-east-1",
+              prefix: "",
+              forcePathStyle: false,
+            },
+          },
+          secrets: {
+            provider: "local_encrypted",
+            strictMode: false,
+            localEncrypted: {
+              keyFilePath: path.join(instanceRoot, "secrets", "master.key"),
+            },
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf8",
+    );
+
+    process.chdir(worktreeRoot);
+    process.env.PAPERCLIP_IN_WORKTREE = "true";
+    process.env.PAPERCLIP_WORKTREE_NAME = "PAP-126-public-base-url-port";
+    process.env.PAPERCLIP_HOME = isolatedHome;
+    process.env.PAPERCLIP_INSTANCE_ID = "pap-126-public-base-url-port";
+    process.env.PAPERCLIP_CONFIG = configPath;
+
+    maybePersistWorktreeRuntimePorts({
+      serverPort: 3103,
+      databasePort: 54335,
+    });
+
+    const writtenConfig = JSON.parse(await fs.readFile(configPath, "utf8"));
+
+    expect(writtenConfig.server.port).toBe(3103);
+    expect(writtenConfig.database.embeddedPostgresPort).toBe(54335);
+    expect(writtenConfig.auth.publicBaseUrl).toBe("https://paperclip.example:8443");
+  });
+
   it("does not rewrite no-port public auth URLs when persisting runtime-selected ports", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-worktree-public-ports-"));
     const worktreeRoot = path.join(tempRoot, "PAP-125-public-base-url");
@@ -618,6 +700,23 @@ describe("worktree config repair", () => {
     expect(config.server.port).toBe(3100);
     expect(config.database.embeddedPostgresPort).toBe(54340);
     expect(config.auth.publicBaseUrl).toBe("http://my-host.ts.net:3104/");
+  });
+
+  it("does not rewrite the in-memory config when public auth URL has an explicit port", () => {
+    const { config, changed } = applyRuntimePortSelectionToConfig(
+      buildLegacyConfig("/tmp/shared", "https://paperclip.example:8443"),
+      {
+        serverPort: 3104,
+        databasePort: 54340,
+        allowServerPortWrite: false,
+        allowDatabasePortWrite: true,
+      },
+    );
+
+    expect(changed).toBe(true);
+    expect(config.server.port).toBe(3100);
+    expect(config.database.embeddedPostgresPort).toBe(54340);
+    expect(config.auth.publicBaseUrl).toBe("https://paperclip.example:8443");
   });
 
   it("does not rewrite the in-memory config when auth URL has no explicit port", () => {

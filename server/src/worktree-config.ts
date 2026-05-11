@@ -27,12 +27,33 @@ function sanitizeWorktreeInstanceId(rawValue: string): string {
   return normalized || "worktree";
 }
 
+function isLocalOrTailnetHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (!host) return false;
+  if (host === "localhost" || host === "0.0.0.0" || host === "::" || host === "::1") return true;
+  if (host.startsWith("127.") || host.startsWith("10.") || host.startsWith("192.168.")) return true;
+
+  const match = host.match(/^172\.(\d{1,2})\./);
+  if (match) {
+    const secondOctet = Number(match[1]);
+    if (secondOctet >= 16 && secondOctet <= 31) return true;
+  }
+
+  return (
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".ts.net") ||
+    !host.includes(".")
+  );
+}
+
 function rewriteLocalUrlPort(rawUrl: string | undefined, port: number): string | undefined {
   if (!rawUrl) return undefined;
   try {
     const parsed = new URL(rawUrl);
     // The URL API normalizes default ports like :80/:443 to "", so treat them as stable URLs.
     if (!parsed.port) return rawUrl;
+    if (!isLocalOrTailnetHost(parsed.hostname)) return rawUrl;
     parsed.port = String(port);
     return parsed.toString();
   } catch {
