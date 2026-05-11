@@ -26,4 +26,28 @@ if [ "$changed" = "1" ]; then
     chown -R node:node /paperclip
 fi
 
+# Railway exposes public domains through RAILWAY_PUBLIC_DOMAIN/RAILWAY_STATIC_URL.
+# Paperclip authenticated+public mode needs an explicit auth/public base URL;
+# derive it from Railway metadata so a branch redeploy does not crash when the
+# service relies on Railway's generated domain instead of hand-set auth vars.
+if [ -n "${RAILWAY_PUBLIC_DOMAIN:-${RAILWAY_STATIC_URL:-}}" ]; then
+    railway_domain="${RAILWAY_PUBLIC_DOMAIN:-${RAILWAY_STATIC_URL}}"
+    case "$railway_domain" in
+        http://*|https://*) railway_public_url="$railway_domain" ;;
+        *) railway_public_url="https://$railway_domain" ;;
+    esac
+
+    if [ -z "${PAPERCLIP_PUBLIC_URL:-}" ]; then
+        export PAPERCLIP_PUBLIC_URL="$railway_public_url"
+    fi
+
+    if [ -z "${BETTER_AUTH_BASE_URL:-}" ] && [ -z "${BETTER_AUTH_URL:-}" ] && [ -z "${PAPERCLIP_AUTH_PUBLIC_BASE_URL:-}" ]; then
+        export BETTER_AUTH_BASE_URL="$PAPERCLIP_PUBLIC_URL"
+    fi
+
+    if [ "${PAPERCLIP_DEPLOYMENT_MODE:-}" = "authenticated" ] && [ "${PAPERCLIP_DEPLOYMENT_EXPOSURE:-private}" = "private" ] && [ "${PAPERCLIP_FORCE_PRIVATE:-false}" != "true" ]; then
+        export PAPERCLIP_DEPLOYMENT_EXPOSURE="public"
+    fi
+fi
+
 exec gosu node "$@"
