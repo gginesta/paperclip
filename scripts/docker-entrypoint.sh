@@ -27,7 +27,7 @@ fi
 # tree before the Node process starts, so repair ownership on every boot when
 # needed, not only when USER_UID/USER_GID changes.
 mkdir -p /paperclip/instances/default
-if [ "$changed" = "1" ] || [ ! -w /paperclip ] || [ ! -w /paperclip/instances/default ]; then
+if [ "$changed" = "1" ] || ! gosu node test -w /paperclip || ! gosu node test -w /paperclip/instances/default; then
     chown -R node:node /paperclip
 fi
 
