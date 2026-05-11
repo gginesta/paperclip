@@ -1045,6 +1045,34 @@ function extractResultText(value: unknown): string | null {
   return nonEmpty(record.text) ?? nonEmpty(record.summary) ?? null;
 }
 
+export function buildOpenClawAgentParams(input: {
+  payloadTemplate: Record<string, unknown>;
+  message: string;
+  sessionKey: string;
+  runId: string;
+  configuredAgentId?: string | null;
+  waitTimeoutMs: number;
+}): Record<string, unknown> {
+  const agentParams: Record<string, unknown> = {
+    ...input.payloadTemplate,
+    message: input.message,
+    sessionKey: input.sessionKey,
+    idempotencyKey: input.runId,
+  };
+  delete agentParams.text;
+
+  const configuredAgentId = nonEmpty(input.configuredAgentId);
+  if (configuredAgentId && !nonEmpty(agentParams.agentId)) {
+    agentParams.agentId = configuredAgentId;
+  }
+
+  if (typeof agentParams.timeout !== "number") {
+    agentParams.timeout = input.waitTimeoutMs;
+  }
+
+  return agentParams;
+}
+
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
   const urlValue = asString(ctx.config.url, "").trim();
   if (!urlValue) {
@@ -1127,25 +1155,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const templateMessage = nonEmpty(payloadTemplate.message) ?? nonEmpty(payloadTemplate.text);
   const message = templateMessage ? appendWakeText(templateMessage, wakeText) : wakeText;
-  const paperclipPayload = buildStandardPaperclipPayload(ctx, wakePayload, paperclipEnv, payloadTemplate);
-
-  const agentParams: Record<string, unknown> = {
-    ...payloadTemplate,
+  const agentParams = buildOpenClawAgentParams({
+    payloadTemplate,
     message,
     sessionKey,
-    idempotencyKey: ctx.runId,
-  };
-  delete agentParams.text;
-  agentParams.paperclip = paperclipPayload;
-
-  const configuredAgentId = nonEmpty(ctx.config.agentId);
-  if (configuredAgentId && !nonEmpty(agentParams.agentId)) {
-    agentParams.agentId = configuredAgentId;
-  }
-
-  if (typeof agentParams.timeout !== "number") {
-    agentParams.timeout = waitTimeoutMs;
-  }
+    runId: ctx.runId,
+    configuredAgentId: nonEmpty(ctx.config.agentId),
+    waitTimeoutMs,
+  });
 
   if (ctx.onMeta) {
     await ctx.onMeta({

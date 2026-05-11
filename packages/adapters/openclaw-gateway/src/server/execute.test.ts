@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveSessionKey } from "./execute.js";
+import { buildOpenClawAgentParams, resolveSessionKey } from "./execute.js";
 
 describe("resolveSessionKey", () => {
   it("prefixes run-scoped session keys with the configured agent", () => {
@@ -48,5 +48,31 @@ describe("resolveSessionKey", () => {
         issueId: null,
       }),
     ).toBe("agent:meridian:paperclip");
+  });
+});
+
+describe("buildOpenClawAgentParams", () => {
+  it("does not send Paperclip context as an unsupported top-level OpenClaw agent param", () => {
+    const params = buildOpenClawAgentParams({
+      payloadTemplate: {
+        text: "legacy text",
+        paperclip: { issueId: "issue-123" },
+      },
+      message: "wake text includes Paperclip context",
+      sessionKey: "agent:meridian:paperclip:issue:issue-123",
+      runId: "run-123",
+      configuredAgentId: "meridian",
+      waitTimeoutMs: 120000,
+    });
+
+    expect(params).toEqual({
+      message: "wake text includes Paperclip context",
+      sessionKey: "agent:meridian:paperclip:issue:issue-123",
+      idempotencyKey: "run-123",
+      agentId: "meridian",
+      timeout: 120000,
+    });
+    expect(params).not.toHaveProperty("paperclip");
+    expect(params).not.toHaveProperty("text");
   });
 });
