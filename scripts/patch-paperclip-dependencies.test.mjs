@@ -4,8 +4,9 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-const script = new URL("./patch-paperclip-dependencies.mjs", import.meta.url).pathname;
+const script = fileURLToPath(new URL("./patch-paperclip-dependencies.mjs", import.meta.url));
 
 function fixture(version = "2026.722.0") {
   const root = mkdtempSync(join(tmpdir(), "paperclip-dependency-patch-"));
