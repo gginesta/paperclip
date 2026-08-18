@@ -3,8 +3,8 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const PATCH_ID = "molty-paperclip-security-dependencies-2026-08-11-v1";
-const SUPPORTED_VERSION = "2026.722.0";
+const PATCH_ID = "molty-paperclip-security-dependencies-2026-08-18-v2";
+const SUPPORTED_VERSION = "2026.817.0";
 const UNDICI_VERSION = "6.28.0";
 const JSDOM_VERSION = "28.1.0";
 const JSDOM_UNDICI_VERSION = "7.29.0";

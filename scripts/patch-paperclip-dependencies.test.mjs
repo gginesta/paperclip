@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const script = fileURLToPath(new URL("./patch-paperclip-dependencies.mjs", import.meta.url));
 
-function fixture(version = "2026.722.0") {
+function fixture(version = "2026.817.0") {
   const root = mkdtempSync(join(tmpdir(), "paperclip-dependency-patch-"));
   writeFileSync(join(root, "package.json"), JSON.stringify({ name: "paperclipai", version, dependencies: {} }));
   return root;
@@ -32,8 +32,8 @@ test("pins and verifies the patched undici resolution", () => {
 });
 
 test("fails closed on version drift", () => {
-  const root = fixture("2026.723.0");
+  const root = fixture("2026.818.0");
   const result = spawnSync(process.execPath, [script, "--root", root], { encoding: "utf8" });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /expected paperclipai 2026\.722\.0/);
+  assert.match(result.stderr, /expected paperclipai 2026\.817\.0/);
 });
