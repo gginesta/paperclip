@@ -410,6 +410,7 @@ describe("openclaw gateway adapter execute", () => {
             },
             payloadTemplate: {
               message: "wake now",
+              extraSystemPrompt: "Existing system guidance",
             },
             paperclipApiKeyPath: "/data/.openclaw/paperclip-brinc-api-key.json",
             waitTimeoutMs: 2000,
@@ -466,6 +467,14 @@ describe("openclaw gateway adapter execute", () => {
       expect(String(payload?.message ?? "")).toContain("verify the returned id and companyId exactly match");
       expect(String(payload?.message ?? "")).toContain("stop before any mutation");
       expect(String(payload?.message ?? "")).toContain("do not search for or substitute another credential");
+      expect(String(payload?.extraSystemPrompt ?? "")).toContain(
+        "Ignore any pre-existing, remembered, discovered, or alternate Paperclip credential",
+      );
+      expect(String(payload?.extraSystemPrompt ?? "")).toContain("Existing system guidance");
+      expect(String(payload?.extraSystemPrompt ?? "")).toContain(
+        "/data/.openclaw/paperclip-brinc-api-key.json",
+      );
+      expect(String(payload?.extraSystemPrompt ?? "")).toContain("stop immediately without any Paperclip mutation");
 
       expect(logs.some((entry) => entry.includes("[openclaw-gateway:event] run=run-123 stream=assistant"))).toBe(true);
     } finally {

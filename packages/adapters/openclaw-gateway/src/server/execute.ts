@@ -448,6 +448,15 @@ function appendWakeText(baseText: string, wakeText: string): string {
   return trimmedBase.length > 0 ? `${trimmedBase}\n\n${wakeText}` : wakeText;
 }
 
+function buildPaperclipIdentitySystemPrompt(paperclipApiKeyPath: string): string {
+  return [
+    "Paperclip identity safety invariant for this run:",
+    `- Ignore any pre-existing, remembered, discovered, or alternate Paperclip credential. Load PAPERCLIP_API_KEY only from ${paperclipApiKeyPath}.`,
+    "- Before any Paperclip mutation, call GET /api/agents/me with that credential and verify id and companyId exactly match PAPERCLIP_AGENT_ID and PAPERCLIP_COMPANY_ID from the wake message.",
+    "- If the file is missing, malformed, unauthorized, or either identity differs, stop immediately without any Paperclip mutation. Do not search for or substitute another credential.",
+  ].join("\n");
+}
+
 function buildStandardPaperclipPayload(
   ctx: AdapterExecutionContext,
   wakePayload: WakePayload,
@@ -1118,6 +1127,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     idempotencyKey: ctx.runId,
   };
   delete agentParams.text;
+  const templateExtraSystemPrompt = nonEmpty(agentParams.extraSystemPrompt);
+  const identitySystemPrompt = buildPaperclipIdentitySystemPrompt(paperclipApiKeyPathResult.path);
+  agentParams.extraSystemPrompt = templateExtraSystemPrompt
+    ? appendWakeText(templateExtraSystemPrompt, identitySystemPrompt)
+    : identitySystemPrompt;
 
   const configuredAgentId = nonEmpty(ctx.config.agentId);
   if (configuredAgentId && !nonEmpty(agentParams.agentId)) {
