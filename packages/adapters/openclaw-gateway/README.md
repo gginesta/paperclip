@@ -43,6 +43,19 @@ The adapter supports the same session routing model as HTTP OpenClaw mode:
 
 Resolved session key is sent as `agent.sessionKey`.
 
+## Paperclip API Identity
+
+OpenClaw gateway agents load their Paperclip API credential inside the remote
+runtime. By default, wake text points to
+`~/.openclaw/workspace/paperclip-claimed-api-key.json` for backwards
+compatibility.
+
+When one OpenClaw gateway hosts multiple Paperclip registrations, set an exact
+absolute `paperclipApiKeyPath` on each registration. The path is included in the
+wake instructions; the credential value is never copied into the prompt or
+adapter logs. Custom paths containing control characters, exceeding 4096
+characters, or not absolute fail before the adapter connects.
+
 ## Payload Mapping
 
 The agent request is built as:

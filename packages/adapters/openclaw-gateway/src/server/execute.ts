@@ -313,6 +313,35 @@ function resolvePaperclipApiUrlOverride(value: unknown): string | null {
   }
 }
 
+const DEFAULT_PAPERCLIP_API_KEY_PATH = "~/.openclaw/workspace/paperclip-claimed-api-key.json";
+const MAX_PAPERCLIP_API_KEY_PATH_LENGTH = 4096;
+
+function resolvePaperclipApiKeyPath(value: unknown): { path: string; error: null } | { path: null; error: string } {
+  const raw = nonEmpty(value);
+  if (!raw) return { path: DEFAULT_PAPERCLIP_API_KEY_PATH, error: null };
+
+  if (
+    raw.length > MAX_PAPERCLIP_API_KEY_PATH_LENGTH ||
+    /[\u0000-\u001f\u007f]/u.test(raw)
+  ) {
+    return {
+      path: null,
+      error: "paperclipApiKeyPath must be a bounded path without control characters",
+    };
+  }
+
+  const isPosixAbsolute = raw.startsWith("/");
+  const isWindowsAbsolute = /^[A-Za-z]:[\\/]/u.test(raw);
+  if (!isPosixAbsolute && !isWindowsAbsolute) {
+    return {
+      path: null,
+      error: "paperclipApiKeyPath must be an absolute path",
+    };
+  }
+
+  return { path: raw, error: null };
+}
+
 function buildPaperclipEnvForWake(ctx: AdapterExecutionContext, wakePayload: WakePayload): Record<string, string> {
   const paperclipApiUrlOverride = resolvePaperclipApiUrlOverride(ctx.config.paperclipApiUrl);
   const paperclipEnv: Record<string, string> = {
@@ -335,8 +364,11 @@ function buildPaperclipEnvForWake(ctx: AdapterExecutionContext, wakePayload: Wak
   return paperclipEnv;
 }
 
-function buildWakeText(payload: WakePayload, paperclipEnv: Record<string, string>): string {
-  const claimedApiKeyPath = "~/.openclaw/workspace/paperclip-claimed-api-key.json";
+function buildWakeText(
+  payload: WakePayload,
+  paperclipEnv: Record<string, string>,
+  paperclipApiKeyPath: string,
+): string {
   const orderedKeys = [
     "PAPERCLIP_RUN_ID",
     "PAPERCLIP_AGENT_ID",
@@ -367,9 +399,9 @@ function buildWakeText(payload: WakePayload, paperclipEnv: Record<string, string
     "",
     "Set these values in your run context:",
     ...envLines,
-    `PAPERCLIP_API_KEY=<token from ${claimedApiKeyPath}>`,
+    `PAPERCLIP_API_KEY=<token from ${paperclipApiKeyPath}>`,
     "",
-    `Load PAPERCLIP_API_KEY from ${claimedApiKeyPath} (the token you saved after claim-api-key).`,
+    `Load PAPERCLIP_API_KEY from ${paperclipApiKeyPath} (the token you saved after claim-api-key).`,
     "",
     `api_base=${apiBaseHint}`,
     `task_id=${payload.taskId ?? ""}`,
@@ -383,11 +415,12 @@ function buildWakeText(payload: WakePayload, paperclipEnv: Record<string, string
     "HTTP rules:",
     "- Use Authorization: Bearer $PAPERCLIP_API_KEY on every API call.",
     "- Use X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID on every mutating API call.",
+    "- If identity verification fails, do not search for or substitute another credential.",
     "- Use only /api endpoints listed below.",
     "- Do NOT call guessed endpoints like /api/cloud-adapter/*, /api/cloud-adapters/*, /api/adapters/cloud/*, or /api/heartbeat.",
     "",
     "Workflow:",
-    "1) GET /api/agents/me",
+    "1) GET /api/agents/me and verify the returned id and companyId exactly match PAPERCLIP_AGENT_ID and PAPERCLIP_COMPANY_ID. If either differs, stop before any mutation.",
     `2) Determine issueId: PAPERCLIP_TASK_ID if present, otherwise issue_id (${issueIdHint}).`,
     "3) If issueId exists:",
     "   - POST /api/issues/{issueId}/checkout with {\"agentId\":\"$PAPERCLIP_AGENT_ID\",\"expectedStatuses\":[\"todo\",\"backlog\",\"blocked\"]}",
@@ -1025,6 +1058,17 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     };
   }
 
+  const paperclipApiKeyPathResult = resolvePaperclipApiKeyPath(ctx.config.paperclipApiKeyPath);
+  if (paperclipApiKeyPathResult.path === null) {
+    return {
+      exitCode: 1,
+      signal: null,
+      timedOut: false,
+      errorMessage: paperclipApiKeyPathResult.error,
+      errorCode: "openclaw_gateway_paperclip_api_key_path_invalid",
+    };
+  }
+
   const timeoutSec = Math.max(0, Math.floor(asNumber(ctx.config.timeoutSec, 120)));
   const timeoutMs = timeoutSec > 0 ? timeoutSec * 1000 : 0;
   const connectTimeoutMs = timeoutMs > 0 ? Math.min(timeoutMs, 15_000) : 10_000;
@@ -1052,7 +1096,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const wakePayload = buildWakePayload(ctx);
   const paperclipEnv = buildPaperclipEnvForWake(ctx, wakePayload);
-  const wakeText = buildWakeText(wakePayload, paperclipEnv);
+  const wakeText = buildWakeText(wakePayload, paperclipEnv, paperclipApiKeyPathResult.path);
 
   const sessionKeyStrategy = normalizeSessionKeyStrategy(ctx.config.sessionKeyStrategy);
   const configuredSessionKey = nonEmpty(ctx.config.sessionKey);
