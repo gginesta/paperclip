@@ -9,10 +9,15 @@ RUN npm install -g paperclipai@${PAPERCLIP_VERSION} \
   && node -p "require('/usr/local/lib/node_modules/paperclipai/package.json').version" | grep -Fx "${PAPERCLIP_VERSION}"
 
 COPY --chmod=755 scripts/patch-paperclip-dependencies.mjs /usr/local/bin/patch-paperclip-dependencies.mjs
+COPY --chmod=755 scripts/patch-paperclip-agent-run-binding.mjs /usr/local/bin/patch-paperclip-agent-run-binding.mjs
 RUN node /usr/local/bin/patch-paperclip-dependencies.mjs \
       --root /usr/local/lib/node_modules/paperclipai \
   && npm install --prefix /usr/local/lib/node_modules/paperclipai --omit=dev --ignore-scripts --legacy-peer-deps \
   && node /usr/local/bin/patch-paperclip-dependencies.mjs \
+      --root /usr/local/lib/node_modules/paperclipai --verify \
+  && node /usr/local/bin/patch-paperclip-agent-run-binding.mjs \
+      --root /usr/local/lib/node_modules/paperclipai \
+  && node /usr/local/bin/patch-paperclip-agent-run-binding.mjs \
       --root /usr/local/lib/node_modules/paperclipai --verify \
   && npm audit --prefix /usr/local/lib/node_modules/paperclipai --omit=dev --audit-level=high
 
