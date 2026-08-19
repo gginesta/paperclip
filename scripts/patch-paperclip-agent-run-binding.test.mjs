@@ -30,6 +30,7 @@ test("binds agent-key run ids to the authenticated agent and company", () => {
   assert.match(patched, /heartbeatRuns\.companyId, key\.companyId/);
   assert.match(patched, /heartbeatRuns\.agentId, key\.agentId/);
   assert.match(patched, /agent_key_run_identity_mismatch/);
+  assert.doesNotMatch(patched, /^\+/m);
 });
 
 test("fails closed on package version drift", () => {
