@@ -42,7 +42,7 @@ test("binds static keys to run identity and injects a signed run token for OpenC
   assert.match(patched, /heartbeatRuns\.agentId, key\.agentId/);
   assert.match(patched, /agent_key_run_identity_mismatch/);
   assert.match(patched, /agent_jwt_run_inactive/);
-  assert.match(patched, /heartbeatRuns\.status, "in_progress"/);
+  assert.match(patched, /heartbeatRuns\.status, "running"/);
   assert.doesNotMatch(patched, /^\+/m);
   const registry = readFileSync(join(root, "node_modules", "@paperclipai", "server", "dist", "adapters", "registry.js"), "utf8");
   assert.match(registry, /molty-openclaw-run-jwt-v2/);
