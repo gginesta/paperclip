@@ -4,7 +4,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl git \
   && rm -rf /var/lib/apt/lists/*
 
-ARG PAPERCLIP_VERSION=2026.817.0
+ARG PAPERCLIP_VERSION=2026.824.0
 RUN npm install -g paperclipai@${PAPERCLIP_VERSION} \
   && node -p "require('/usr/local/lib/node_modules/paperclipai/package.json').version" | grep -Fx "${PAPERCLIP_VERSION}"
 

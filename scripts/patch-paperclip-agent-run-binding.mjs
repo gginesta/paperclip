@@ -5,7 +5,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const PATCH_ID = "molty-paperclip-openclaw-run-identity-2026-08-19-v2";
-const SUPPORTED_VERSION = "2026.817.0";
+const SUPPORTED_VERSION = "2026.824.0";
 const INSERT_BEFORE = "        const responsibleUserId = normalizeOptionalString(key.responsibleUserId);";
 const PATCH_MARKER = "// molty-agent-key-run-binding-v2";
 const PATCH_CODE = `        ${PATCH_MARKER}\n        const normalizedAgentKeyRunId = normalizeOptionalString(runIdHeader);\n        if (normalizedAgentKeyRunId) {\n            const boundRun = await db\n                .select({ id: heartbeatRuns.id })\n                .from(heartbeatRuns)\n                .where(and(eq(heartbeatRuns.id, normalizedAgentKeyRunId), eq(heartbeatRuns.companyId, key.companyId), eq(heartbeatRuns.agentId, key.agentId)))\n                .then((rows) => rows[0] ?? null);\n            if (!boundRun) {\n                next(forbidden("X-Paperclip-Run-Id does not belong to the authenticated agent and company", {\n                    code: "agent_key_run_identity_mismatch",\n                }));\n                return;\n            }\n        }\n`;
