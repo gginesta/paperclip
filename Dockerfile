@@ -10,6 +10,7 @@ RUN npm install -g paperclipai@${PAPERCLIP_VERSION} \
 
 COPY --chmod=755 scripts/patch-paperclip-dependencies.mjs /usr/local/bin/patch-paperclip-dependencies.mjs
 COPY --chmod=755 scripts/patch-paperclip-agent-run-binding.mjs /usr/local/bin/patch-paperclip-agent-run-binding.mjs
+COPY --chmod=755 scripts/patch-paperclip-pending-approval-reconciliation.mjs /usr/local/bin/patch-paperclip-pending-approval-reconciliation.mjs
 RUN node /usr/local/bin/patch-paperclip-dependencies.mjs \
       --root /usr/local/lib/node_modules/paperclipai \
   && npm install --prefix /usr/local/lib/node_modules/paperclipai --omit=dev --ignore-scripts --legacy-peer-deps \
@@ -18,6 +19,10 @@ RUN node /usr/local/bin/patch-paperclip-dependencies.mjs \
   && node /usr/local/bin/patch-paperclip-agent-run-binding.mjs \
       --root /usr/local/lib/node_modules/paperclipai \
   && node /usr/local/bin/patch-paperclip-agent-run-binding.mjs \
+      --root /usr/local/lib/node_modules/paperclipai --verify \
+  && node /usr/local/bin/patch-paperclip-pending-approval-reconciliation.mjs \
+      --root /usr/local/lib/node_modules/paperclipai \
+  && node /usr/local/bin/patch-paperclip-pending-approval-reconciliation.mjs \
       --root /usr/local/lib/node_modules/paperclipai --verify \
   && npm audit --prefix /usr/local/lib/node_modules/paperclipai --omit=dev --audit-level=high
 
