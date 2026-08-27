@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const script = fileURLToPath(new URL("./patch-paperclip-agent-run-binding.mjs", import.meta.url));
 const anchor = "        const responsibleUserId = normalizeOptionalString(key.responsibleUserId);";
 
-function fixture(version = "2026.817.0", authSource) {
+function fixture(version = "2026.824.0", authSource) {
   const root = mkdtempSync(join(tmpdir(), "paperclip-agent-run-binding-"));
   const serverRoot = join(root, "node_modules", "@paperclipai", "server");
   const openclawRoot = join(root, "node_modules", "@paperclipai", "adapter-openclaw-gateway");
@@ -55,14 +55,14 @@ test("binds static keys to run identity and injects a signed run token for OpenC
 });
 
 test("fails closed on package version drift", () => {
-  const root = fixture("2026.818.0");
+  const root = fixture("2026.825.0");
   const result = spawnSync(process.execPath, [script, "--root", root], { encoding: "utf8" });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /expected paperclipai 2026\.817\.0/);
+  assert.match(result.stderr, /expected paperclipai 2026\.824\.0/);
 });
 
 test("fails closed on compiled middleware anchor drift", () => {
-  const root = fixture("2026.817.0", 'import { heartbeatRuns } from "@paperclipai/db";\nfunction normalizeOptionalString(value) { return value; }\n            const onBehalfOfUserId = claims.responsible_user_id !== undefined\n');
+  const root = fixture("2026.824.0", 'import { heartbeatRuns } from "@paperclipai/db";\nfunction normalizeOptionalString(value) { return value; }\n            const onBehalfOfUserId = claims.responsible_user_id !== undefined\n');
   const result = spawnSync(process.execPath, [script, "--root", root], { encoding: "utf8" });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /anchor drift/);
